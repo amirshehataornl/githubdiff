@@ -40,7 +40,7 @@ Modify the utility to keep track of changes in all the patches included in the P
 - force push
 - Add the difference per patch in the PR comment
 
-## Disadvantges
+## Disadvantges And Solutions
 The problem with this approach is it can generate large comments, if the changes are extensive.
 
 It would be better to be able to upload these patches to the PR comment somehow, but it seems like the github CLI doesn't allow for that. It'll have to be done manually, which is an option.
@@ -49,4 +49,49 @@ To remedy this disadvantage, don't provided the -p and the -R command line argum
 
 Another solution to this problem is to create a repository in the owner's github account which will hold the patch files. A link to these patch files can be added into the comment. This seems to be the most reasonable approach.
 
+The following command can show the list of commits in the PR in JSON format. This can then be parsed and used in creating a difference between local and remote changes
+```
+gh pr view <PR> -R <target repo> --json commits
+  
+Available fields:
+  additions
+  assignees
+  author
+  baseRefName
+  body
+  changedFiles
+  closed
+  closedAt
+  comments
+  commits
+  createdAt
+  deletions
+  files
+  headRefName
+  headRepository
+  headRepositoryOwner
+  id
+  isCrossRepository
+  isDraft
+  labels
+  maintainerCanModify
+  mergeCommit
+  mergeStateStatus
+  mergeable
+  mergedAt
+  mergedBy
+  milestone
+  number
+  potentialMergeCommit
+  projectCards
+  reactionGroups
+  reviewDecision
+  reviewRequests
+  reviews
+  state
+  statusCheckRollup
+  title
+  updatedAt
+  url
+```
 The patches will need to be named consistently, such that when the same set of patches are updated, the patches in the github repository will be updated as well. This way we don't have to maintain many files. We can then execute a clean up regularly, which will delete all the patches associated with a specific PR, if the PR has been closed.
