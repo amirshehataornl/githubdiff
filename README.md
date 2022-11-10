@@ -31,4 +31,18 @@ options:
 # TODO
 This utility only works for changes to the tip of the patch list.
 
-Modify the utility to keep track of changes in all the patches included in the PR
+Modify the utility to keep track of changes in all the patches included in the PR in the following manner:
+
+- Get a list of all the patches in the PR
+- before force pushing:
+    - For each patch generate a difference between the local version and the remote version
+    - store the patch locally, following a standardized naming convention
+- force push
+- Add the difference per patch in the PR comment
+
+## Disadvantges
+The problem with this approach is it can generate large comments, if the changes are extensive.
+
+It would be better to be able to upload these patches to the PR comment somehow, but it seems like the github CLI doesn't allow for that. It'll have to be done manually, which is an option.
+
+To remedy this disadvantage, don't provided the -p and the -R command line arguments but provide the -k argument. This will keep the patches around. They can be manually added to the PR comment afterwards.
