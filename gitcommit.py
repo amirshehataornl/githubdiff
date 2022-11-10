@@ -151,11 +151,10 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-a", "--amend", help = "amend a git commit",
-                        nargs='?', const=1, type=int)
-    parser.add_argument("-p", "--pr", help = "Pull Request Number", type=int)
-    parser.add_argument("-R", "--repo", help = "Target Github repository",
-                        nargs='?', const="ofiwg/libfabric")
+                        action="store_true")
     parser.add_argument("-f", "--force", help = "Do a force push", action="store_true")
+    parser.add_argument("-p", "--pr", help = "Pull Request Number", type=int)
+    parser.add_argument("-R", "--repo", help = "Target Github repository")
     parser.add_argument("-d", "--dry-run", help = "Do a dry run", action="store_true")
     parser.add_argument("-v", "--verbose", help = "Verbose mode", action="store_true")
     parser.add_argument("-k", "--keep", help = "Keep Patch", action="store_true")
@@ -194,8 +193,6 @@ if __name__ == '__main__':
     git_add_files(repo, files)
     git_commit(repo, args[0].amend, files, diff)
 
-    print("=-->", args[0].keep)
-
     if args[0].force:
         git_force_push(repo.remote().name, repo.active_branch.name)
     else:
@@ -204,6 +201,9 @@ if __name__ == '__main__':
         exit(0)
 
     if args[0].pr == None:
+        exit(0)
+
+    if args[0].repo == None:
         exit(0)
 
     gh_add_comment(filename, args[0].pr, args[0].repo)
