@@ -1,5 +1,5 @@
 import sys, os, shlex, subprocess, threading, ctypes
-from util import prformat, fg
+from util import prformat, fg, bg
 
 class Command(threading.Thread):
     def __init__(self, cmd, wait_event = None, fake=False,
@@ -17,14 +17,13 @@ class Command(threading.Thread):
 
     def exec_cmd(self):
         if self.verbose:
-            print(self.cmd)
+            prformat(fg.green+fg.bold, self.cmd)
         if not self.fake:
             args = shlex.split(self.cmd)
             try:
                 self.subprocess = subprocess.Popen(args, stderr=subprocess.STDOUT,
                         stdout=subprocess.PIPE)
             except Exception as e:
-                print(os.environ['PATH'])
                 prformat(fg.bold+fg.red, "Failed ---> %s" % self.cmd)
                 raise e
             t = self.subprocess.communicate()[0],self.subprocess.returncode
@@ -33,7 +32,7 @@ class Command(threading.Thread):
 
             out = "\n"+"rc = "+str(t[1])+"\n"+cmd_out
             if self.verbose:
-                print(out)
+                prformat(fg.orange, out)
 
             # write raw output in dump file
             if self.dump_file:

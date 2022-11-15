@@ -36,19 +36,5 @@ class bg:
     cyan = '\033[46m'
     lightgrey = '\033[47m'
 
-class ATFDumper(yaml.Dumper):
-    def increase_indent(self, flow=False, indentless=False):
-        return super(ATFDumper, self).increase_indent(flow, False)
-
-def get_today():
-    info = time.localtime()
-    today = "%d-%d-%d" % (info.tm_year, info.tm_mon, info.tm_mday)
-    return today
-
-def get_now():
-    info = time.localtime()
-    time_info = "%d.%d" % (info.tm_hour, info.tm_min)
-    return time_info
-
 def prformat(color, text):
     print(color, text, reset)
