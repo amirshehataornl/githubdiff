@@ -1,18 +1,14 @@
 #!/usr/bin/env python3
 
 # get the git difference
-#   git diff --cached
-#    write output in temporary file "tmp.patch"
-#    encompass the output in `` to make it look like code in the git hub
-#    commit message
-# run git commit with the parameters passed in
-#   git commit <parameters>
+#   git diff <local branch> <remote>/<remote branch>
+#    write output in temporary file
 # if the user requests a force push:
 #   git push -f -u origin <branch>
-# If a PR is provided then assume ofiwg/libfabric unless another one is
-# given by the user
+# If a PR is provided then
+#   push the difference into the local repository and get the url
 #   write a comment into the PR with the diff:
-#       gh pr comment <PR> -F /path/to/tmp.patch -R <REPO>
+#       gh pr comment <PR> --body <url> -R <REPO>
 #
 
 import sys, git, os, argparse, subprocess, re, pathlib, shutil
@@ -29,14 +25,14 @@ def gh_add_comment(url, pr, target):
     global verbose
 
     comment = "This is an automatically generated comment.\n" \
-              "The patch to show the difference this latest\n" \
+              "The patch which shows the code changes this latest\n" \
               "update brings can be found in the following link\n" \
               "%s" % (url)
     cmd = Command('gh pr comment %d -R %s -b "%s"'%
             (pr, target, comment), fake=dry_run, verbose=verbose)
     rc, output = cmd.exec_cmd()
     if rc:
-        print("Failed to add comment to github PR %d" % (pr))
+        prformat(fg.red, "Failed to add comment to github PR %d" % (pr))
         exit(1)
 
 def generate_git_diff(repo, pr):
@@ -49,12 +45,16 @@ def generate_git_diff(repo, pr):
          date.minute, date.second, date.microsecond, pr)
     filename = os.path.join("/", "tmp", filename)
 
-    cmd = Command("git diff %s..%s" %
-            (remote, local), verbose=verbose)
+    cmd = Command("git diff %s/%s..%s" %
+            (remote, local, local), verbose=verbose)
     rc, output = cmd.exec_cmd()
     if rc:
-        print("Failed to generate a diff between %s and %s " % (remote, local))
+        prformat(fg.red, "Failed to generate a diff between %s and %s " % (remote, local))
         exit(1)
+
+    if len(output) == 0:
+        prformat(fg.red, "No changes detected")
+        exit(0)
 
     with open(filename, 'w') as f:
         f.write(output)
@@ -77,7 +77,7 @@ def git_initialize_repo(fq_repo_name, repo_name):
     cmd = Command("gh repo clone %s" % (fq_repo_name), fake=dry_run, verbose=verbose)
     rc, output = cmd.exec_cmd()
     if rc:
-        print("Failed to clone newly created repo")
+        prformat(fg.red, "Failed to clone newly created repo")
         exit(1)
     path = os.path.join(tmpdir, repo_name)
     if verbose:
@@ -87,24 +87,24 @@ def git_initialize_repo(fq_repo_name, repo_name):
     cmd = Command("git init", fake=dry_run, verbose=verbose)
     rc, output = cmd.exec_cmd()
     if rc:
-        print("Failed to initialize repo")
+        prformat(fg.red, "Failed to initialize repo")
         exit(1)
     with open("README.md", 'w') as f:
         f.write("This is an automatically created repo to track code changes\n")
     cmd = Command("git add README.md", fake=dry_run, verbose=verbose)
     rc, output = cmd.exec_cmd()
     if rc:
-        print("failed to add README.md")
+        prformat(fg.red, "failed to add README.md")
         exit(1)
     cmd = Command('git commit -m "first commit"', fake=dry_run, verbose=verbose)
     rc, output = cmd.exec_cmd()
     if rc:
-        print("failed to commit README.md")
+        prformat(fg.red, "failed to commit README.md")
         exit(1)
     cmd = Command("git branch -M main", fake=dry_run, verbose=verbose)
     rc, output = cmd.exec_cmd()
     if rc:
-        print("failed to create main branch")
+        prformat(fg.red, "failed to create main branch")
         exit(1)
     try:
         cmd = Command("git remote add origin https://github.com/%s.git" % (fq_repo_name),
@@ -115,7 +115,7 @@ def git_initialize_repo(fq_repo_name, repo_name):
     cmd = Command("git push -u origin main", fake=dry_run, verbose=verbose)
     rc, output = cmd.exec_cmd()
     if rc:
-        print("Failed to push origin upstream")
+        prformat(fg.red, "Failed to push origin upstream")
         exit(1)
 
     if not dry_run:
@@ -133,7 +133,7 @@ def gh_create_diff_repo():
     cmd = Command("gh auth status", verbose=verbose)
     rc, output = cmd.exec_cmd()
     if rc:
-        print("Failed gh auth status")
+        prformat(fg.red, "Failed gh auth status")
         exit(1)
     l = output.split('\n')
     username = None
@@ -142,13 +142,13 @@ def gh_create_diff_repo():
             a = [elem for elem in re.split(r'Logged in to github.com as | ', e) if len(elem) > 0]
             username = a[1]
     if not username:
-        print("couldn't find user name")
+        prformat(fg.red, "couldn't find user name")
         exit(1)
     # gh repo list
     cmd = Command("gh repo list", verbose=verbose)
     rc, output = cmd.exec_cmd()
     if rc:
-        print("Failed gh repo list")
+        prformat(fg.red, "Failed gh repo list")
         exit(1)
     l = output.split('\n')
     # check if gh_diff_<username> exists
@@ -162,7 +162,7 @@ def gh_create_diff_repo():
                   fake=dry_run, verbose=verbose)
     rc, output = cmd.exec_cmd()
     if rc:
-        print("Failed to create %s", fq_repo_name)
+        prformat(fg.red, "Failed to create %s", fq_repo_name)
         exit(1)
 
     git_initialize_repo(fq_repo_name, repo_name)
@@ -178,7 +178,7 @@ def gh_push_change(fname, un, fq_repo_name, repo_name, pr, keep):
                   fake=dry_run, verbose=verbose)
     rc, output = cmd.exec_cmd()
     if rc:
-        print("Failed to clone diff repo")
+        prformat(fg.red, "Failed to clone diff repo")
         exit(1)
     # cp the file in the repo
     repo_dir = os.path.join(os.path.sep, 'tmp', repo_name)
@@ -211,11 +211,11 @@ def git_force_push(remote, branch):
     cmd = Command("git push -f -u %s %s" % (remote, branch), fake=dry_run, verbose=verbose)
     rc, output = cmd.exec_cmd()
     if rc:
-        print("Failed to commit changes")
+        prformat(fg.red, "Failed to commit changes")
         exit(1)
 
 def print_help(parser):
-    print("Always execute script from the top of a git repository")
+    prformat(fg.red, "Always execute script from the top of a git repository")
     parser.print_help()
 
 if __name__ == '__main__':
