@@ -20,14 +20,43 @@ dry_run = False
 verbose = False
 timeout = 1000
 
-def gh_add_comment(url, pr, target):
+def gh_get_all_pr_users(pr, target, owner):
     global dry_run
     global verbose
 
-    comment = "This is an automatically generated comment.\n" \
-              "The patch which shows the code changes this latest\n" \
-              "update brings can be found in the following link\n" \
-              "%s" % (url)
+    cmd = Command('gh pr view %d -R %s --comments' %
+            (pr, target), verbose=verbose)
+    rc, output = cmd.exec_cmd()
+    if rc:
+        prformat(fg.red, "Failed to get users in PR %d" % (pr))
+        exit(1)
+    l = output.split('\n')
+    users = []
+    for e in l:
+        users += re.findall("author:\s[a-z]+", e)
+
+    for i in range(0, len(users)):
+        users[i] = users[i].replace("author:\t", "")
+        users[i] = '@'+users[i]
+
+    remove_list = ['@'+owner]
+    users = [i for i in users if i not in remove_list]
+    users = [*set(users)]
+
+    return users
+
+def gh_add_comment(url, pr, target, owner):
+    global dry_run
+    global verbose
+
+    users = ', '.join(gh_get_all_pr_users(pr, target, owner))
+
+    comment = users + "\n" \
+              "This is an automatically generated comment.\n" \
+              "The link below:\n" \
+              "%s\n" \
+              "Shows the updates in the new revision of this PR\n" \
+               % (url)
     cmd = Command('gh pr comment %d -R %s -b "%s"'%
             (pr, target, comment), fake=dry_run, verbose=verbose)
     rc, output = cmd.exec_cmd()
@@ -254,6 +283,6 @@ if __name__ == '__main__':
     change_url = gh_push_change(diff_file, username, fq_repo_name, repo_name, args[0].pr, args[0].keep)
     if args[0].force:
         git_force_push(repo.remote().name, repo.active_branch.name)
-        gh_add_comment(change_url, args[0].pr, args[0].repo)
+        gh_add_comment(change_url, args[0].pr, args[0].repo, username)
 
 

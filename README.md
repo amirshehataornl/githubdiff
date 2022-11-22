@@ -3,11 +3,12 @@ After creating a Pull Request (PR) in github, the PR can be updated by doing a f
 
 ## Exact Steps
 This utility:
-* gets the top level difference between local and remote repo.
+* gets the top level difference between local and remote repo for the current branch.
 * Creates a patch with the difference.
 * Uploads it to an automatically generated repository in the user's github account named: gh_diff_<username>.
-* If the -f option is given, then force push the changes in the current git working directory to update the PR. 
-* Add a comment to the PR in the provided target repository with a link to the patch file
+* If the -f option is given, then force push the changes in the current git working directory to update the PR.
+* Add a comment to the PR in the provided target repository with a link to the patch file.
+   * Tag everyone who had commented on the PR to the comment, to notify them of the update
 
 This makes it easier for reviewers to see the changes which the updated PR brings.
 
