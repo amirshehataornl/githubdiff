@@ -11,7 +11,7 @@
 #       gh pr comment <PR> --body <url> -R <REPO>
 #
 
-import sys, git, os, argparse, subprocess, re, pathlib, shutil
+import sys, git, os, argparse, subprocess, re, pathlib, shutil, json
 from datetime import datetime
 from command import Command
 from util import prformat, fg, bg
@@ -24,25 +24,29 @@ def gh_get_all_pr_users(pr, target, owner):
     global dry_run
     global verbose
 
-    cmd = Command('gh pr view %d -R %s --comments' %
+    cmd = Command('gh pr view %d -R %s --json reviews' %
             (pr, target), verbose=verbose)
     rc, output = cmd.exec_cmd()
     if rc:
         prformat(fg.red, "Failed to get users in PR %d" % (pr))
         exit(1)
-    l = output.split('\n')
+
+    cmd = Command('gh pr view %d -R %s --json comments' %
+            (pr, target), verbose=verbose)
+    rc, output2 = cmd.exec_cmd()
+    if rc:
+        prformat(fg.red, "Failed to get users in PR %d" % (pr))
+        exit(1)
+    jdata = json.loads(output)
     users = []
-    for e in l:
-        users += re.findall("author:\s[a-z]+", e)
+    for review in jdata['reviews']:
+        if review['author']['login'] != owner and '@'+review['author']['login'] not in users:
+            users.append('@'+review['author']['login'])
 
-    for i in range(0, len(users)):
-        users[i] = users[i].replace("author:\t", "")
-        users[i] = '@'+users[i]
-
-    remove_list = ['@'+owner]
-    users = [i for i in users if i not in remove_list]
-    users = [*set(users)]
-
+    jdata = json.loads(output2)
+    for comment in jdata['comments']:
+        if comment['author']['login'] != owner and '@'+comment['author']['login'] not in users:
+            users.append('@'+comment['author']['login'])
     return users
 
 def gh_add_comment(url, pr, target, owner):
